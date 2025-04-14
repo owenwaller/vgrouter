@@ -14,7 +14,6 @@ import (
 )
 
 func TestFull(t *testing.T) {
-
 	tmpDir, err := ioutil.TempDir("", "rgen")
 	if err != nil {
 		t.Fatal(err)
@@ -82,11 +81,26 @@ func TestOutput(t *testing.T) {
 }
 
 `), 0644))
-
-	// run it and get it's output (ensures both compilation and expected result)
-	cmd := exec.Command("go", "test", "-v")
+	cmd := exec.Command("go", "mod", "download", "github.com/vugu/vugu@master")
 	cmd.Dir = tmpDir
 	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Error executing go mod download github.com/vugu/vugu@master, OUTPUT:\n%s", b)
+		t.Fatal(err)
+	}
+
+	cmd = exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	b, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("Error executing go mod tidy, OUTPUT:\n%s", b)
+		t.Fatal(err)
+	}
+
+	// run it and get it's output (ensures both compilation and expected result)
+	cmd = exec.Command("go", "test", "-v")
+	cmd.Dir = tmpDir
+	b, err = cmd.CombinedOutput()
 	if err != nil {
 		t.Logf("Error executing go test, OUTPUT:\n%s", b)
 		t.Fatal(err)
@@ -125,7 +139,6 @@ func TestOutput(t *testing.T) {
 	if !regexp.MustCompile(`ROUTE: /section1/subsection1/page-c -> \*subsection1\.PageC`).MatchString(routeLines[6]) {
 		t.Errorf("match failure")
 	}
-
 }
 
 func must(err error) {
