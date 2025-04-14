@@ -2,12 +2,9 @@ package vgrouter
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/vugu/vugu/js"
 )
 
 // TODO:
@@ -47,23 +44,6 @@ func New(eventEnv EventEnv) *Router {
 	}
 }
 
-// Router handles URL routing.
-type Router struct {
-	useFragment bool
-	pathPrefix  string
-
-	popStateFunc js.Func
-
-	eventEnv EventEnv
-
-	rlist           []routeEntry
-	notFoundHandler RouteHandler
-
-	// bindRoutePath string // the route (with :param stuff in it) that matches the bind params, so we can reconstruct it
-	bindRouteMPath mpath
-	bindParamMap   map[string]BindParam
-}
-
 type routeEntry struct {
 	mpath mpath
 	rh    RouteHandler
@@ -87,48 +67,6 @@ func (r *Router) SetPathPrefix(pfx string) {
 	r.pathPrefix = pfx
 }
 
-// ListenForPopState registers an event listener so the user navigating with
-// forward/back/history or fragment changes will be detected and handled by this router.
-// Any call to SetUseFragment or SetPathPrefix should occur before calling
-// ListenForPopState.
-//
-// Only works in wasm environment and if called outside it will have no effect and return error.
-func (r *Router) ListenForPopState() error {
-	return r.addPopStateListener(func(this js.Value, args []js.Value) interface{} {
-
-		// TODO: see if we need something better for error handling
-
-		// log.Printf("addPopStateListener callack")
-
-		u, err := r.readBrowserURL()
-		// log.Printf("addPopStateListener callack: u=%#v, err=%v", u, err)
-		if err != nil {
-			log.Printf("ListenForPopState: error from readBrowserURL: %v", err)
-			return nil
-		}
-
-		p := u.Path
-		if !strings.HasPrefix(p, r.pathPrefix) {
-			log.Printf("ListenForPopState: prefix error: %v",
-				ErrMissingPrefix{Path: p, Message: fmt.Sprintf("path %q does not begin with prefix %q", p, r.pathPrefix)})
-			return nil
-		}
-
-		tp := strings.TrimPrefix(p, r.pathPrefix)
-		q := u.Query()
-
-		// log.Printf("addPopStateListener calling process: tp=%q, q=%#v", tp, q)
-
-		r.eventEnv.Lock()
-		defer r.eventEnv.UnlockRender()
-		r.process(tp, q)
-
-		return nil
-
-	})
-}
-
-// UnlistenForPopState removes the listener created by ListenForPopState.
 func (r *Router) UnlistenForPopState() error {
 	return r.removePopStateListener()
 }
@@ -143,7 +81,6 @@ func (r *Router) MustNavigate(path string, query url.Values, opts ...NavigatorOp
 
 // Navigate will go the specified path and query.
 func (r *Router) Navigate(path string, query url.Values, opts ...NavigatorOpt) error {
-
 	r.process(path, query)
 
 	pq := r.pathPrefix + path
@@ -161,12 +98,6 @@ func (r *Router) Navigate(path string, query url.Values, opts ...NavigatorOpt) e
 	return nil
 }
 
-// BrowserAvail returns true if in browser mode.
-func (r *Router) BrowserAvail() bool {
-	// this is really just so otehr packages don't have to import `js` just to figure out if they should do extra browser setup
-	return js.Global().Truthy()
-}
-
 // ErrMissingPrefix is returned when a prefix was expected but not found.
 type ErrMissingPrefix struct {
 	Message string // error message
@@ -182,7 +113,6 @@ func (e ErrMissingPrefix) Error() string { return e.Message }
 // If a path prefix has been set and the path read does not start with prefix
 // then an error of type *ErrMissingPrefix will be returned.
 func (r *Router) Pull() error {
-
 	u, err := r.readBrowserURL()
 	if err != nil {
 		return err
@@ -201,7 +131,6 @@ func (r *Router) Pull() error {
 // Push will take any bound parameters and put them into the URL in the appropriate place.
 // Only works in wasm environment otherwise has no effect.
 func (r *Router) Push(opts ...NavigatorOpt) error {
-
 	params := make(url.Values, len(r.bindParamMap))
 	for k, v := range r.bindParamMap {
 		params[k] = v.BindParamRead()
@@ -265,7 +194,6 @@ func (r *Router) MustAddRoute(path string, rh RouteHandler) {
 
 // AddRoute adds a route to the list.
 func (r *Router) AddRoute(path string, rh RouteHandler) error {
-
 	mp, err := parseMpath(path)
 	if err != nil {
 		return err
@@ -292,12 +220,10 @@ func (r *Router) GetNotFound() RouteHandler {
 
 // ProcessRequest processes the route contained in request. This is meant for server-side use with static rendering.
 func (r *Router) ProcessRequest(req *http.Request) {
-
 	p := req.URL.Path
 	q := req.URL.Query()
 
 	r.process2(p, q, req)
-
 }
 
 // process is used interally to run through the routes and call appropriate handlers.
@@ -307,7 +233,6 @@ func (r *Router) process(path string, query url.Values) {
 }
 
 func (r *Router) process2(path string, query url.Values, req *http.Request) {
-
 	// TODO: ideally we would improve the performance here with some fancy trie stuff, but for the moment
 	// I'm much more concerned with getting things functional.
 
@@ -359,7 +284,6 @@ func (r *Router) process2(path string, query url.Values, req *http.Request) {
 			Request: req,
 		})
 	}
-
 }
 
 // RouteHandler implementations are called in response to a route matching (being navigated to).

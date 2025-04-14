@@ -1,3 +1,5 @@
+//go:build !js && !wasm
+
 package vgrouter
 
 import (
@@ -9,7 +11,6 @@ import (
 )
 
 func (r *Router) pushPathAndQuery(pathAndQuery string) {
-
 	g := js.Global()
 	if g.Truthy() {
 		pqv := pathAndQuery
@@ -18,11 +19,9 @@ func (r *Router) pushPathAndQuery(pathAndQuery string) {
 		}
 		g.Get("window").Get("history").Call("pushState", nil, "", pqv)
 	}
-
 }
 
 func (r *Router) replacePathAndQuery(pathAndQuery string) {
-
 	g := js.Global()
 	if g.Truthy() {
 		pqv := pathAndQuery
@@ -31,11 +30,9 @@ func (r *Router) replacePathAndQuery(pathAndQuery string) {
 		}
 		g.Get("window").Get("history").Call("replaceState", nil, "", pqv)
 	}
-
 }
 
 func (r *Router) readBrowserURL() (*url.URL, error) {
-
 	g := js.Global()
 	if !g.Truthy() {
 		return nil, errors.New("not in browser (js) environment")
@@ -54,11 +51,9 @@ func (r *Router) readBrowserURL() (*url.URL, error) {
 	}
 
 	return u, nil
-
 }
 
 func (r *Router) removePopStateListener() error {
-
 	g := js.Global()
 	if !g.Truthy() {
 		return errors.New("not in browser (js) environment")
@@ -77,7 +72,6 @@ func (r *Router) removePopStateListener() error {
 }
 
 func (r *Router) addPopStateListener(f func(this js.Value, args []js.Value) interface{}) error {
-
 	g := js.Global()
 	if !g.Truthy() {
 		return errors.New("not in browser (js) environment")
@@ -94,5 +88,4 @@ func (r *Router) addPopStateListener(f func(this js.Value, args []js.Value) inte
 	r.popStateFunc = jf
 
 	return nil
-
 }
